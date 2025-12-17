@@ -3,12 +3,12 @@
 #include "render_config.hpp"
 #include "render_context.hpp"
 
-#include <QOpenGLFunctions>
-#include <QOpenGLBuffer>
-#include <QOpenGLShaderProgram>
-#include <QMatrix4x4>
+#include <glad/glad.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
-class TriangleRender : protected QOpenGLFunctions, public IRenderer
+class TriangleRender : public IRenderer
 {
 public:
     TriangleRender();
@@ -22,14 +22,18 @@ public:
     std::string getName() const override { return "TriangleRender"; };
 
 private:
-    bool initializeShader( const QString& vertexPath, const QString& fragmentShader );
+    bool initializeShader( const std::string& vertexPath, const std::string& fragmentPath );
     bool initializeGeometry( const std::vector<VertexData>& vertices );
     void reportError( RenderError error, const std::string& message );
+    std::string loadShaderSource( const std::string& filepath );
+    GLuint compileShader( GLenum type, const std::string& source );
+    GLuint createShaderProgram( GLuint vertexShader, GLuint fragmentShader );
 
-    QOpenGLShaderProgram m_program;
-    QOpenGLBuffer m_vbo;
-    QMatrix4x4 m_projection;
-    QVector4D m_clearColor;
+    GLuint m_shaderProgram;
+    GLuint m_vao;
+    GLuint m_vbo;
+    glm::mat4 m_projection;
+    glm::vec4 m_clearColor;
     float m_rotationSpeed;
     float m_currentAngle;
     int m_vertexCount;

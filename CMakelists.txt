@@ -1,25 +1,51 @@
+cmake_minimum_required(VERSION 3.15)
 project(main_opengl)
-set( TARGET_NAME "${PROJECT_NAME}" )
 
+set(TARGET_NAME "${PROJECT_NAME}")
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# add_subdirectory(Component)
-add_executable(${TARGET_NAME} main.cpp)
+# 添加第三方库子目录
+add_subdirectory(3rdparty/glad)
+add_subdirectory(3rdparty/glfw)
+add_subdirectory(3rdparty/glm)
+
+# Component源文件
+set(COMPONENT_SOURCES
+    Component/triangle_render.cpp
+)
+
+set(COMPONENT_HEADERS
+    Component/irenderer.hpp
+    Component/render_config.hpp
+    Component/render_context.hpp
+    Component/render_factory.hpp
+    Component/triangle_render.hpp
+)
+
+# 创建可执行文件
+add_executable(${TARGET_NAME} 
+    main.cpp
+    ${COMPONENT_SOURCES}
+    ${COMPONENT_HEADERS}
+)
+
+# 查找OpenGL
 find_package(OpenGL REQUIRED)
 
-target_link_libraries( ${TARGET_NAME} 
+# 链接库
+target_link_libraries(${TARGET_NAME} 
     PRIVATE
     glfw
     glad
     OpenGL::GL
-    ${CMAKE_SOURCE_DIR}/3rdparty/glad/include
-    ${CMAKE_SOURCE_DIR}/3rdparty/glfw/include
 )
 
-target_include_directories( ${TARGET_NAME} 
+# 包含目录
+target_include_directories(${TARGET_NAME} 
     PRIVATE
     ${CMAKE_SOURCE_DIR}/3rdparty/glad/include
     ${CMAKE_SOURCE_DIR}/3rdparty/glfw/include
+    ${CMAKE_SOURCE_DIR}/3rdparty/glm
     ${CMAKE_SOURCE_DIR}/Component
 )
