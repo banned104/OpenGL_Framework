@@ -5,14 +5,62 @@ set(TARGET_NAME "${PROJECT_NAME}")
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+
+# -------------------------------------------------------
+# Find Python for GLSL conversion
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
+
+# Define GLSL shader files and their outputs
+set(SHADER_DIR "${CMAKE_SOURCE_DIR}/shaders")
+set(GLSL_CONVERTER "${SHADER_DIR}/Convert_GLSL_to_h.py")
+
+# Define shader files to convert
+set(SHADER_FILES
+    "${SHADER_DIR}/triangle.vert.glsl"
+    "${SHADER_DIR}/triangle.frag.glsl"
+)
+set(PYTHON_ARGS "--pc")
+
+# Generate header files for each shader
+set(GENERATED_HEADERS)
+
+foreach(SHADER_FILE ${SHADER_FILES})
+    # Get the full filename without path and extension
+    get_filename_component(SHADER_BASENAME ${SHADER_FILE} NAME)
+    # Remove the .glsl extension to get the proper name (e.g., wind.vert, wind.frag)
+    string(REGEX REPLACE "\\.glsl$" "" SHADER_NAME "${SHADER_BASENAME}")
+    set(HEADER_FILE "${SHADER_DIR}/${SHADER_NAME}.core.h")
+    
+    # Add to list
+    list(APPEND GENERATED_HEADERS ${HEADER_FILE})
+    
+    # Create custom command to generate header file
+    add_custom_command(
+        OUTPUT ${HEADER_FILE}
+        COMMAND ${Python3_EXECUTABLE} ${GLSL_CONVERTER} ${SHADER_FILE} ${HEADER_FILE} ${PYTHON_ARGS}
+        DEPENDS ${SHADER_FILE} ${GLSL_CONVERTER}
+        COMMENT "Converting ${SHADER_FILE} to C++ header"
+        VERBATIM
+    )
+endforeach()
+
+# Create a custom target for shader generation
+add_custom_target(generate_shaders
+    DEPENDS ${GENERATED_HEADERS}
+    COMMENT "Generating all shader header files"
+)
+
+# -------------------------------------------------------
+
 # 添加第三方库子目录
 add_subdirectory(3rdparty/glad)
 add_subdirectory(3rdparty/glfw)
-add_subdirectory(3rdparty/glm)
+# GLM是header-only库，不需要add_subdirectory
 
 # Component源文件
 set(COMPONENT_SOURCES
     Component/triangle_render.cpp
+    Component/shader.cpp
 )
 
 set(COMPONENT_HEADERS
@@ -21,6 +69,7 @@ set(COMPONENT_HEADERS
     Component/render_context.hpp
     Component/render_factory.hpp
     Component/triangle_render.hpp
+    Component/shader.hpp
 )
 
 # 创建可执行文件
@@ -46,6 +95,7 @@ target_include_directories(${TARGET_NAME}
     PRIVATE
     ${CMAKE_SOURCE_DIR}/3rdparty/glad/include
     ${CMAKE_SOURCE_DIR}/3rdparty/glfw/include
-    ${CMAKE_SOURCE_DIR}/3rdparty/glm
+    ${CMAKE_SOURCE_DIR}/3rdparty
     ${CMAKE_SOURCE_DIR}/Component
+    ${CMAKE_SOURCE_DIR}/shaders
 )

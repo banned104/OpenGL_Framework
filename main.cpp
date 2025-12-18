@@ -1,161 +1,311 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+
 #include <iostream>
 #include <memory>
+#include <string>
 
 #include "render_factory.hpp"
 #include "render_config.hpp"
 #include "render_context.hpp"
 
-// 窗口大小
-const int WINDOW_WIDTH = 800;
-const int WINDOW_HEIGHT = 600;
-
-// 全局变量
-std::unique_ptr<IRenderer> g_renderer;
-glm::mat4 g_projectionMatrix;
-
-// 错误回调
-void errorCallback(int error, const char* description) {
-    std::cerr << "GLFW Error (" << error << "): " << description << std::endl;
-}
-
-// 窗口大小改变回调
-void framebufferSizeCallback(GLFWwindow* window, int width, int height) {
-    if (g_renderer) {
-        g_renderer->resize(width, height);
-    }
-    
-    // 更新投影矩阵
-    float aspect = static_cast<float>(width) / static_cast<float>(height);
-    g_projectionMatrix = glm::perspective(glm::radians(30.0f), aspect, 3.0f, 10.0f);
-}
-
-// 键盘输入处理
-void processInput(GLFWwindow* window) {
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
-        glfwSetWindowShouldClose(window, true);
-    }
-}
-
-int main() {
-    // 初始化GLFW
-    if (!glfwInit()) {
-        std::cerr << "Failed to initialize GLFW" << std::endl;
-        return -1;
+/**
+ * @brief Application类 - 封装整个OpenGL应用程序的生命周期
+ * 
+ * 单一职责: 管理窗口、渲染循环和资源
+ */
+class Application {
+public:
+    Application(int width, int height, const std::string& title)
+        : m_width(width)
+        , m_height(height)
+        , m_title(title)
+        , m_window(nullptr)
+        , m_frameNumber(0)
+        , m_frameCount(0)
+        , m_lastTime(0.0)
+    {
     }
 
-    // 设置错误回调
-    glfwSetErrorCallback(errorCallback);
+    ~Application() {
+        shutdown();
+    }
 
-    // 配置GLFW
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    
+    // 禁止拷贝
+    Application(const Application&) = delete;
+    Application& operator=(const Application&) = delete;
+
+    /**
+     * @brief 初始化应用程序
+     */
+    bool initialize() {
+        // 初始化GLFW
+        if (!initializeGLFW()) {
+            return false;
+        }
+
+        // 初始化GLAD
+        if (!initializeGLAD()) {
+            return false;
+        }
+
+        // 打印OpenGL信息
+        printGLInfo();
+
+        // 初始化OpenGL状态
+        initializeGLState();
+
+        // 初始化渲染器
+        if (!initializeRenderer()) {
+            return false;
+        }
+
+        // 初始化投影矩阵
+        updateProjectionMatrix();
+
+        return true;
+    }
+
+    /**
+     * @brief 运行主循环
+     */
+    void run() {
+        m_lastTime = glfwGetTime();
+
+        while (!glfwWindowShouldClose(m_window)) {
+            // 处理输入
+            processInput();
+
+            // 更新
+            update();
+
+            // 渲染
+            render();
+
+            // 交换缓冲区
+            glfwSwapBuffers(m_window);
+            glfwPollEvents();
+
+            // 更新FPS
+            updateFPS();
+        }
+    }
+
+    /**
+     * @brief 关闭应用程序
+     */
+    void shutdown() {
+        if (m_renderer) {
+            m_renderer->cleanup();
+            m_renderer.reset();
+        }
+
+        if (m_window) {
+            glfwDestroyWindow(m_window);
+            m_window = nullptr;
+        }
+
+        glfwTerminate();
+    }
+
+private:
+    // ============ 初始化方法 ============
+
+    bool initializeGLFW() {
+        if (!glfwInit()) {
+            std::cerr << "Failed to initialize GLFW" << std::endl;
+            return false;
+        }
+
+        glfwSetErrorCallback([](int error, const char* description) {
+            std::cerr << "GLFW Error (" << error << "): " << description << std::endl;
+        });
+
+        // 配置OpenGL版本
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
 #ifdef __APPLE__
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
 
-    // 创建窗口
-    GLFWwindow* window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "OpenGL Triangle", nullptr, nullptr);
-    if (!window) {
-        std::cerr << "Failed to create GLFW window" << std::endl;
-        glfwTerminate();
-        return -1;
+        // 创建窗口
+        m_window = glfwCreateWindow(m_width, m_height, m_title.c_str(), nullptr, nullptr);
+        if (!m_window) {
+            std::cerr << "Failed to create GLFW window" << std::endl;
+            glfwTerminate();
+            return false;
+        }
+
+        glfwMakeContextCurrent(m_window);
+
+        // 设置用户指针，用于回调函数访问Application实例
+        glfwSetWindowUserPointer(m_window, this);
+
+        // 设置回调
+        glfwSetFramebufferSizeCallback(m_window, framebufferSizeCallback);
+        glfwSetKeyCallback(m_window, keyCallback);
+
+        return true;
     }
 
-    glfwMakeContextCurrent(window);
-    glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
-
-    // 初始化GLAD
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-        std::cerr << "Failed to initialize GLAD" << std::endl;
-        glfwTerminate();
-        return -1;
+    bool initializeGLAD() {
+        if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+            std::cerr << "Failed to initialize GLAD" << std::endl;
+            return false;
+        }
+        return true;
     }
 
-    // 打印OpenGL版本信息
-    std::cout << "OpenGL Version: " << glGetString(GL_VERSION) << std::endl;
-    std::cout << "GLSL Version: " << glGetString(GL_SHADING_LANGUAGE_VERSION) << std::endl;
-
-    // 启用深度测试
-    glEnable(GL_DEPTH_TEST);
-
-    // 创建渲染器
-    g_renderer = RenderFactory::create("triangle");
-    if (!g_renderer) {
-        std::cerr << "Failed to create renderer" << std::endl;
-        glfwTerminate();
-        return -1;
+    void printGLInfo() {
+        std::cout << "========================================" << std::endl;
+        std::cout << "OpenGL Vendor:   " << glGetString(GL_VENDOR) << std::endl;
+        std::cout << "OpenGL Renderer: " << glGetString(GL_RENDERER) << std::endl;
+        std::cout << "OpenGL Version:  " << glGetString(GL_VERSION) << std::endl;
+        std::cout << "GLSL Version:    " << glGetString(GL_SHADING_LANGUAGE_VERSION) << std::endl;
+        std::cout << "========================================" << std::endl;
     }
 
-    // 设置错误回调
-    g_renderer->setErrorCallback([](RenderError error, const std::string& msg) {
-        std::cerr << "Render Error: " << msg << std::endl;
-    });
-
-    // 创建渲染配置
-    RenderConfig config = RenderConfig::createTriangleConfig();
-
-    // 初始化渲染器
-    if (!g_renderer->initialize(config)) {
-        std::cerr << "Failed to initialize renderer" << std::endl;
-        glfwTerminate();
-        return -1;
+    void initializeGLState() {
+        glEnable(GL_DEPTH_TEST);
+        glDepthFunc(GL_LESS);
     }
 
-    // 初始化投影矩阵
-    float aspect = static_cast<float>(WINDOW_WIDTH) / static_cast<float>(WINDOW_HEIGHT);
-    g_projectionMatrix = glm::perspective(glm::radians(30.0f), aspect, 3.0f, 10.0f);
+    // 对 m_renderer 进行创建和配置
+    bool initializeRenderer() {
+        // 使用工厂创建渲染器
+        m_renderer = RenderFactory::create("triangle");
+        if (!m_renderer) {
+            std::cerr << "Failed to create renderer" << std::endl;
+            return false;
+        }
 
-    // 初始化视口
-    g_renderer->resize(WINDOW_WIDTH, WINDOW_HEIGHT);
+        // 设置错误回调
+        m_renderer->setErrorCallback([](RenderError error, const std::string& msg) {
+            std::cerr << "Render Error [" << static_cast<int>(error) << "]: " << msg << std::endl;
+        });
 
-    // 渲染循环
-    uint64_t frameNumber = 0;
-    double lastTime = glfwGetTime();
-    int frameCount = 0;
+        // 创建配置并初始化
+        m_config = RenderConfig::createTriangleConfig();
+        if (!m_renderer->initialize(m_config)) {
+            std::cerr << "Failed to initialize renderer" << std::endl;
+            return false;
+        }
 
-    while (!glfwWindowShouldClose(window)) {
-        // 处理输入
-        processInput(window);
+        // 初始化视口
+        m_renderer->resize(m_width, m_height);
 
-        // 获取当前窗口大小
-        int width, height;
-        glfwGetFramebufferSize(window, &width, &height);
+        return true;
+    }
+
+    // ============ 回调处理 ============
+
+    static void framebufferSizeCallback(GLFWwindow* window, int width, int height) {
+        auto* app = static_cast<Application*>(glfwGetWindowUserPointer(window));
+        if (app) {
+            app->onResize(width, height);
+        }
+    }
+
+    static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+        auto* app = static_cast<Application*>(glfwGetWindowUserPointer(window));
+        if (app) {
+            app->onKeyPress(key, scancode, action, mods);
+        }
+    }
+
+    void onResize(int width, int height) {
+        m_width = width;
+        m_height = height;
+
+        if (m_renderer) {
+            m_renderer->resize(width, height);
+        }
+
+        updateProjectionMatrix();
+    }
+
+    void onKeyPress(int key, int scancode, int action, int mods) {
+        (void)scancode;
+        (void)mods;
+
+        if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+            glfwSetWindowShouldClose(m_window, true);
+        }
+    }
+
+    // ============ 主循环方法 ============
+
+    void processInput() {
+        // 额外的输入处理可以在这里添加
+    }
+
+    void update() {
+        // 更新逻辑可以在这里添加
+    }
+
+    void render() {
+        if (!m_renderer) return;
 
         // 创建渲染上下文
-        ViewportSize viewportSize(width, height);
-        RenderContext context(viewportSize, g_projectionMatrix, 0.016f);
-        context = context.withFrameNumber(frameNumber++);
+        ViewportSize viewportSize(m_width, m_height);
+        RenderContext context(viewportSize, m_projectionMatrix, 0.016f);
+        context = context.withFrameNumber(m_frameNumber++);
 
-        // 渲染
-        if (g_renderer) {
-            g_renderer->render(context);
-        }
+        // 执行渲染
+        m_renderer->render(context);
+    }
 
-        // 交换缓冲区和轮询事件
-        glfwSwapBuffers(window);
-        glfwPollEvents();
+    void updateProjectionMatrix() {
+        if (m_width <= 0 || m_height <= 0) return;
 
-        // 计算FPS
-        frameCount++;
+        float aspect = static_cast<float>(m_width) / static_cast<float>(m_height);
+        m_projectionMatrix = glm::perspective(glm::radians(30.0f), aspect, 3.0f, 10.0f);
+    }
+
+    void updateFPS() {
+        m_frameCount++;
         double currentTime = glfwGetTime();
-        if (currentTime - lastTime >= 1.0) {
-            std::cout << "FPS: " << frameCount << std::endl;
-            frameCount = 0;
-            lastTime = currentTime;
+
+        if (currentTime - m_lastTime >= 1.0) {
+            std::cout << "FPS: " << m_frameCount << std::endl;
+            m_frameCount = 0;
+            m_lastTime = currentTime;
         }
     }
 
-    // 清理
-    if (g_renderer) {
-        g_renderer->cleanup();
+private:
+    // 窗口属性
+    int m_width;
+    int m_height;
+    std::string m_title;
+    GLFWwindow* m_window;
+
+    // 渲染相关
+    std::unique_ptr<IRenderer> m_renderer;
+    RenderConfig m_config;
+    glm::mat4 m_projectionMatrix;
+
+    // 帧计数
+    uint64_t m_frameNumber;
+    int m_frameCount;
+    double m_lastTime;
+};
+
+// ============ 主函数 ============
+
+int main() {
+    Application app(800, 600, "OpenGL Triangle");
+
+    if (!app.initialize()) {
+        std::cerr << "Application initialization failed!" << std::endl;
+        return -1;
     }
 
-    glfwDestroyWindow(window);
-    glfwTerminate();
+    app.run();
 
     return 0;
 }

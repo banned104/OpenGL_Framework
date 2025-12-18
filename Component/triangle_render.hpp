@@ -2,6 +2,7 @@
 #include "irenderer.hpp"
 #include "render_config.hpp"
 #include "render_context.hpp"
+#include "shader.hpp"
 
 #include <glad/glad.h>
 #include <glm/glm.hpp>
@@ -22,14 +23,10 @@ public:
     std::string getName() const override { return "TriangleRender"; };
 
 private:
-    bool initializeShader( const std::string& vertexPath, const std::string& fragmentPath );
     bool initializeGeometry( const std::vector<VertexData>& vertices );
     void reportError( RenderError error, const std::string& message );
-    std::string loadShaderSource( const std::string& filepath );
-    GLuint compileShader( GLenum type, const std::string& source );
-    GLuint createShaderProgram( GLuint vertexShader, GLuint fragmentShader );
 
-    GLuint m_shaderProgram;
+    Shader m_shader;
     GLuint m_vao;
     GLuint m_vbo;
     glm::mat4 m_projection;
