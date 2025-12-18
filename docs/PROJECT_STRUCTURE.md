@@ -4,23 +4,113 @@
 
 ```
 11_MainOpenGL/
-├── 📄 CMakeLists.txt          # CMake 构建配置
-├── 📄 main.cpp                # 应用程序入口 (Application类)
+├── 📄 CMakeLists.txt          # CMake 构建配置 (支持PC/Android)
+├── 📄 main.cpp                # PC端应用程序入口 (Application类)
+├── 📄 native_renderer.cpp     # Android JNI入口 (EGL管理)
+├── 📄 compile_so.bat          # Android .so编译脚本
 ├── 📂 Component/              # 核心组件目录
 │   ├── 📄 irenderer.hpp       # 渲染器接口定义
-│   ├── 📄 render_config.hpp   # 渲染配置类
+│   ├── 📄 render_config.hpp   # 渲染配置类 (含嵌入式shader)
 │   ├── 📄 render_context.hpp  # 渲染上下文类
 │   ├── 📄 render_factory.hpp  # 渲染器工厂
 │   ├── 📄 shader.hpp/cpp      # Shader管理类
 │   └── 📄 triangle_render.hpp/cpp  # 三角形渲染器实现
 ├── 📂 shaders/                # 着色器文件目录
-│   ├── 📄 triangle.vert.glsl  # 顶点着色器
-│   └── 📄 triangle.frag.glsl  # 片段着色器
+│   ├── 📄 Convert_GLSL_to_h.py    # GLSL转头文件工具
+│   ├── 📄 triangle.vert.glsl      # 顶点着色器源码
+│   ├── 📄 triangle.frag.glsl      # 片段着色器源码
+│   ├── 📄 triangle.vert.core.h    # PC版顶点着色器 (#version 330 core)
+│   ├── 📄 triangle.frag.core.h    # PC版片段着色器
+│   ├── 📄 triangle.vert.es.h      # Android版顶点着色器 (#version 310 es)
+│   └── 📄 triangle.frag.es.h      # Android版片段着色器
+├── 📂 example/                # 示例项目
+│   └── 📂 android/            # Android示例工程
+│       └── 📂 app/src/main/
+│           ├── 📂 java/.../androidopengles/
+│           │   ├── 📄 MainActivity.kt      # Android主Activity
+│           │   ├── 📄 NativeRenderer.kt    # JNI桥接类
+│           │   └── 📄 OpenGLSurfaceView.kt # OpenGL渲染视图
+│           └── 📂 jniLibs/arm64-v8a/
+│               └── 📄 libmain_opengl.so    # 编译后的Native库
 ├── 📂 3rdparty/               # 第三方库
-│   ├── 📂 glad/               # OpenGL加载器
-│   ├── 📂 glfw/               # 窗口管理库
-│   └── 📂 glm/                # 数学库
+│   ├── 📂 glad/               # OpenGL加载器 (仅PC)
+│   ├── 📂 glfw/               # 窗口管理库 (仅PC)
+│   └── 📂 glm/                # 数学库 (跨平台)
 └── 📂 docs/                   # 文档目录
+```
+
+---
+
+## 🌐 跨平台架构
+
+### PC vs Android 对比
+
+```mermaid
+graph TB
+    subgraph PC["🖥️ PC平台"]
+        PC_MAIN[main.cpp<br/>Application类]
+        PC_GLFW[GLFW<br/>窗口管理]
+        PC_GLAD[GLAD<br/>OpenGL加载]
+        PC_SHADER[triangle.*.core.h<br/>#version 330 core]
+        PC_EXE[main_opengl.exe]
+        
+        PC_MAIN --> PC_GLFW
+        PC_MAIN --> PC_GLAD
+        PC_MAIN --> PC_SHADER
+        PC_MAIN --> PC_EXE
+    end
+    
+    subgraph Android["📱 Android平台"]
+        AND_JNI[native_renderer.cpp<br/>JNI入口]
+        AND_EGL[EGL<br/>上下文管理]
+        AND_GLES[GLESv3<br/>OpenGL ES 3.x]
+        AND_SHADER[triangle.*.es.h<br/>#version 310 es]
+        AND_SO[libmain_opengl.so]
+        AND_KT[Kotlin代码<br/>MainActivity等]
+        
+        AND_JNI --> AND_EGL
+        AND_JNI --> AND_GLES
+        AND_JNI --> AND_SHADER
+        AND_JNI --> AND_SO
+        AND_SO --> AND_KT
+    end
+    
+    subgraph Shared["🔄 共享代码"]
+        COMP[Component/<br/>渲染器核心]
+        GLM[GLM<br/>数学库]
+    end
+    
+    PC --> Shared
+    Android --> Shared
+```
+
+### 条件编译机制
+
+```mermaid
+flowchart LR
+    subgraph Source["源代码"]
+        S1[shader.hpp]
+        S2[triangle_render.hpp]
+        S3[render_config.hpp]
+    end
+    
+    subgraph Condition["#ifdef __ANDROID__"]
+        C1{平台判断}
+    end
+    
+    subgraph PC_Branch["PC分支"]
+        P1["#include <glad/glad.h>"]
+        P2["#include <triangle.vert.core.h>"]
+    end
+    
+    subgraph Android_Branch["Android分支"]
+        A1["#include <GLES3/gl3.h>"]
+        A2["#include <triangle.vert.es.h>"]
+    end
+    
+    Source --> C1
+    C1 -->|PC| PC_Branch
+    C1 -->|Android| Android_Branch
 ```
 
 ---
@@ -32,7 +122,8 @@
 ```mermaid
 graph TB
     subgraph Application["🖥️ Application Layer"]
-        APP[Application类]
+        APP[Application类<br/>PC入口]
+        JNI[native_renderer.cpp<br/>Android入口]
         MAIN[main.cpp]
     end
     
@@ -51,12 +142,15 @@ graph TB
     end
     
     subgraph External["📦 3rdparty"]
-        GLFW[GLFW<br/>窗口管理]
-        GLAD[GLAD<br/>OpenGL加载]
+        GLFW[GLFW<br/>窗口管理-PC]
+        GLAD[GLAD<br/>OpenGL加载-PC]
         GLM[GLM<br/>数学运算]
+        EGL[EGL<br/>上下文管理-Android]
+        GLES[GLESv3<br/>OpenGL ES-Android]
     end
     
     MAIN --> APP
+    JNI --> RF
     APP --> RF
     APP --> RC
     RF --> IR
@@ -68,9 +162,12 @@ graph TB
     CR --> IR
     MR --> IR
     APP --> RX
+    JNI --> RX
     TR --> RX
     APP --> GLFW
     APP --> GLAD
+    JNI --> EGL
+    JNI --> GLES
     SH --> GLM
     TR --> GLM
 ```
@@ -123,13 +220,13 @@ classDiagram
     }
     
     class RenderConfig {
-        -m_vertexShaderPath: string
-        -m_fragmentShaderPath: string
+        -m_vertexShaderSource: string
+        -m_fragmentShaderSource: string
         -m_vertexData: vector~VertexData~
         -m_clearColor: vec4
         -m_rotationSpeed: float
-        +setVertexShaderPath(path) RenderConfig
-        +setFragmentShaderPath(path) RenderConfig
+        +setVertexShaderSource(src) RenderConfig
+        +setFragmentShaderSource(src) RenderConfig
         +setVertexData(data) RenderConfig
         +setClearColor(r,g,b,a) RenderConfig
         +createTriangleConfig()$ RenderConfig
@@ -180,6 +277,77 @@ classDiagram
 
 ---
 
+## 📱 Android JNI 架构
+
+### JNI调用流程
+
+```mermaid
+sequenceDiagram
+    participant KT as Kotlin代码
+    participant JNI as JNI层
+    participant EGL as EGL
+    participant Renderer as TriangleRender
+    
+    Note over KT,Renderer: 初始化阶段 (在渲染线程中!)
+    KT->>JNI: nativeInit(surface)
+    JNI->>EGL: eglGetDisplay()
+    JNI->>EGL: eglInitialize()
+    JNI->>EGL: eglChooseConfig()
+    JNI->>EGL: eglCreateWindowSurface()
+    JNI->>EGL: eglCreateContext()
+    JNI->>EGL: eglMakeCurrent()
+    JNI->>Renderer: RenderFactory::create("triangle")
+    JNI->>Renderer: initialize(config)
+    JNI-->>KT: true
+    
+    Note over KT,Renderer: 渲染循环
+    loop 每帧 (~60 FPS)
+        KT->>JNI: nativeRender()
+        JNI->>Renderer: render(context)
+        JNI->>EGL: eglSwapBuffers()
+    end
+    
+    Note over KT,Renderer: 清理阶段
+    KT->>JNI: nativeCleanup()
+    JNI->>Renderer: cleanup()
+    JNI->>EGL: eglDestroyContext()
+    JNI->>EGL: eglDestroySurface()
+    JNI->>EGL: eglTerminate()
+```
+
+### Android线程模型
+
+```mermaid
+flowchart TB
+    subgraph MainThread["主线程 (UI Thread)"]
+        MT1[MainActivity.onCreate]
+        MT2[surfaceCreated回调]
+        MT3[surfaceChanged回调]
+        MT4[surfaceDestroyed回调]
+    end
+    
+    subgraph RenderThread["渲染线程 (OpenGL Thread)"]
+        RT1[nativeInit<br/>创建EGL上下文]
+        RT2[nativeResize<br/>更新视口]
+        RT3[nativeRender<br/>渲染循环]
+        RT4[nativeCleanup<br/>释放资源]
+    end
+    
+    MT2 -->|启动线程| RT1
+    MT3 -->|设置标志| RT2
+    RT1 --> RT3
+    RT3 -->|循环| RT3
+    MT4 -->|停止标志| RT4
+    
+    style MainThread fill:#e3f2fd
+    style RenderThread fill:#e8f5e9
+    
+    Note1[⚠️ 重要: EGL上下文是线程绑定的!<br/>必须在同一线程中创建和使用]
+    RenderThread --> Note1
+```
+
+---
+
 ## 🔄 渲染流程
 
 ### 初始化流程
@@ -216,7 +384,7 @@ sequenceDiagram
         Factory-->>App: unique_ptr<TriangleRender>
         App->>App: createTriangleConfig()
         App->>Renderer: initialize(config)
-        Renderer->>Shader: loadFromFile(vert, frag)
+        Renderer->>Shader: loadFromSource(vert, frag)
         Shader->>Shader: compileShader()
         Shader->>Shader: linkProgram()
         Renderer->>Renderer: initializeGeometry()
@@ -256,6 +424,87 @@ flowchart TD
 
 ---
 
+## 🛠️ 构建系统
+
+### Shader编译流程
+
+```mermaid
+flowchart LR
+    subgraph Input["输入文件"]
+        VERT[triangle.vert.glsl]
+        FRAG[triangle.frag.glsl]
+    end
+    
+    subgraph Tool["转换工具"]
+        PY[Convert_GLSL_to_h.py]
+    end
+    
+    subgraph PC_Output["PC输出 (--pc)"]
+        PC_V[triangle.vert.core.h<br/>#version 330 core]
+        PC_F[triangle.frag.core.h]
+    end
+    
+    subgraph Android_Output["Android输出 (--android)"]
+        AND_V[triangle.vert.es.h<br/>#version 310 es<br/>precision highp float]
+        AND_F[triangle.frag.es.h]
+    end
+    
+    VERT --> PY
+    FRAG --> PY
+    PY -->|--pc| PC_Output
+    PY -->|--android| Android_Output
+```
+
+### Android编译流程 (compile_so.bat)
+
+```mermaid
+flowchart TD
+    START([compile_so.bat]) --> STEP1
+    
+    STEP1["[1/4] 转换Shader<br/>python Convert_GLSL_to_h.py --android"]
+    STEP1 --> STEP2
+    
+    STEP2["[2/4] 配置CMake<br/>cmake -G Ninja<br/>-DCMAKE_TOOLCHAIN_FILE=android.toolchain.cmake<br/>-DANDROID_ABI=arm64-v8a<br/>-DBUILD_AS_SHARED=ON"]
+    STEP2 --> STEP3
+    
+    STEP3["[3/4] 编译<br/>ninja"]
+    STEP3 --> STEP4
+    
+    STEP4["[4/4] 复制.so<br/>copy libmain_opengl.so<br/>→ jniLibs/arm64-v8a/"]
+    STEP4 --> END([完成])
+    
+    style STEP1 fill:#e3f2fd
+    style STEP2 fill:#fff3e0
+    style STEP3 fill:#e8f5e9
+    style STEP4 fill:#fce4ec
+```
+
+### CMakeLists.txt 条件编译
+
+```mermaid
+flowchart TB
+    subgraph CMake["CMakeLists.txt"]
+        CHECK{ANDROID OR<br/>BUILD_AS_SHARED?}
+    end
+    
+    subgraph Android_Build["Android构建"]
+        A1[add_library SHARED]
+        A2[target_link_libraries:<br/>GLESv3, EGL, android, log]
+        A3[输出: libmain_opengl.so]
+    end
+    
+    subgraph PC_Build["PC构建"]
+        P1[add_executable]
+        P2[target_link_libraries:<br/>glfw, glad, OpenGL]
+        P3[输出: main_opengl.exe]
+    end
+    
+    CHECK -->|是| Android_Build
+    CHECK -->|否| PC_Build
+```
+
+---
+
 ## 🆕 创建新渲染器指南
 
 ### 步骤概览
@@ -289,7 +538,13 @@ flowchart LR
 #include "render_context.hpp"
 #include "shader.hpp"
 
-#include <glad/glad.h>
+// 跨平台OpenGL头文件
+#ifdef __ANDROID__
+    #include <GLES3/gl3.h>
+#else
+    #include <glad/glad.h>
+#endif
+
 #include <glm/glm.hpp>
 
 class CubeRender : public IRenderer {
@@ -335,9 +590,9 @@ CubeRender::CubeRender()
 CubeRender::~CubeRender() { cleanup(); }
 
 bool CubeRender::initialize(const RenderConfig& config) {
-    // 1. 加载着色器
-    if (!m_shader.loadFromFile(config.vertexShaderPath(), 
-                                config.fragmentShaderPath())) {
+    // 1. 从源码加载着色器（编译时嵌入）
+    if (!m_shader.loadFromSource(config.vertexShaderSource(), 
+                                  config.fragmentShaderSource())) {
         reportError(RenderError::ShaderCompilationFailed, 
                    m_shader.lastError());
         return false;
@@ -383,7 +638,7 @@ bool CubeRender::render(const RenderContext& context) {
 
 #### 步骤 3: 编写着色器
 
-在 `shaders/` 目录下创建着色器文件:
+在 `shaders/` 目录下创建着色器文件，然后使用转换工具:
 
 **cube.vert.glsl:**
 ```glsl
@@ -400,15 +655,13 @@ void main() {
 }
 ```
 
-**cube.frag.glsl:**
-```glsl
-#version 330 core
-in vec3 fragColor;
-out vec4 finalColor;
+**生成头文件:**
+```bash
+# PC版本
+python shaders/Convert_GLSL_to_h.py shaders/cube.vert.glsl shaders/cube.vert.core.h --pc
 
-void main() {
-    finalColor = vec4(fragColor, 1.0);
-}
+# Android版本
+python shaders/Convert_GLSL_to_h.py shaders/cube.vert.glsl shaders/cube.vert.es.h --android
 ```
 
 #### 步骤 4: 注册到工厂
@@ -457,10 +710,22 @@ public:
 在 `render_config.hpp` 中添加:
 
 ```cpp
+// 在头文件顶部添加条件包含
+#ifdef __ANDROID__
+    #include <cube.vert.es.h>
+    #include <cube.frag.es.h>
+#else
+    #include <cube.vert.core.h>
+    #include <cube.frag.core.h>
+#endif
+
+// 添加配置方法
 static RenderConfig createCubeConfig() {
     RenderConfig config;
-    config.setVertexShaderPath("shaders/cube.vert.glsl")
-          .setFragmentShaderPath("shaders/cube.frag.glsl");
+    
+    // 使用编译时嵌入的着色器
+    config.setVertexShaderSource(CUBE_VERTEX_SHADER)
+          .setFragmentShaderSource(CUBE_FRAGMENT_SHADER);
     
     // 设置立方体顶点数据
     std::vector<VertexData> vertices = {
@@ -550,8 +815,8 @@ bool Application::initializeRenderer() {
 ```cpp
 Shader shader;
 
-// 从文件加载
-if (shader.loadFromFile("vertex.glsl", "fragment.glsl")) {
+// 从源码加载（推荐 - 编译时嵌入）
+if (shader.loadFromSource(VERTEX_SHADER_SOURCE, FRAGMENT_SHADER_SOURCE)) {
     shader.use();
     
     // 设置uniform变量
@@ -563,6 +828,9 @@ if (shader.loadFromFile("vertex.glsl", "fragment.glsl")) {
     
     shader.unuse();
 }
+
+// 或从文件加载（仅PC调试用）
+shader.loadFromFile("vertex.glsl", "fragment.glsl");
 ```
 
 ---
@@ -574,6 +842,7 @@ if (shader.loadFromFile("vertex.glsl", "fragment.glsl")) {
 3. **添加光照系统**: 实现Phong/PBR光照
 4. **添加相机系统**: 创建Camera类管理视图变换
 5. **添加ImGui**: 集成调试界面
+6. **多ABI支持**: 添加armeabi-v7a, x86_64等架构
 
 ```mermaid
 graph LR
@@ -583,13 +852,35 @@ graph LR
         LIGHT[Light类]
         MODEL[ModelLoader类]
         UI[ImGui集成]
+        ABI[多ABI支持]
     end
     
     subgraph Current["当前架构"]
         IR[IRenderer]
         SH[Shader]
         APP[Application]
+        JNI[JNI Bridge]
     end
     
     Current --> Future
 ```
+
+---
+
+## ⚠️ 注意事项
+
+### Android开发关键点
+
+1. **EGL上下文线程绑定**: EGL上下文只能在创建它的线程中使用，必须确保`nativeInit()`、`nativeRender()`、`nativeCleanup()`在同一线程调用
+
+2. **Shader版本差异**: 
+   - PC: `#version 330 core`
+   - Android: `#version 310 es` + `precision highp float;`
+
+3. **库命名**: .so文件必须以`lib`开头，加载时去掉前缀
+   - 文件名: `libmain_opengl.so`
+   - 加载: `System.loadLibrary("main_opengl")`
+
+4. **JNI函数命名**: 必须严格匹配包名
+   - 格式: `Java_包名_类名_方法名`
+   - 示例: `Java_com_example_androidopengles_NativeRenderer_nativeInit`
