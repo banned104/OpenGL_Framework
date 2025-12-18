@@ -1,6 +1,13 @@
 #pragma once
 
-#include <glad/glad.h>
+// 平台条件编译：OpenGL ES (Android) vs OpenGL Core (PC)
+#ifdef __ANDROID__
+    #include <GLES3/gl3.h>
+    #include <GLES3/gl3ext.h>
+#else
+    #include <glad/glad.h>
+#endif
+
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 

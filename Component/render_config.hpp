@@ -5,8 +5,14 @@
 #include <glm/glm.hpp>
 
 // 包含生成的着色器头文件（编译时嵌入）
-#include "triangle.vert.core.h"
-#include "triangle.frag.core.h"
+// 根据平台选择不同的着色器版本
+#ifdef __ANDROID__
+    #include "triangle.vert.es.h"
+    #include "triangle.frag.es.h"
+#else
+    #include "triangle.vert.core.h"
+    #include "triangle.frag.core.h"
+#endif
 
 
 struct VertexData
