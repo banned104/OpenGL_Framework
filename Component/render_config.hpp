@@ -6,12 +6,13 @@
 
 // 包含生成的着色器头文件（编译时嵌入）
 // 根据平台选择不同的着色器版本
+// 注意：CMakeLists.txt中已将shaders目录添加到include路径
 #ifdef __ANDROID__
-    #include "triangle.vert.es.h"
-    #include "triangle.frag.es.h"
+    #include <triangle.vert.es.h>
+    #include <triangle.frag.es.h>
 #else
-    #include "triangle.vert.core.h"
-    #include "triangle.frag.core.h"
+    #include <triangle.vert.core.h>
+    #include <triangle.frag.core.h>
 #endif
 
 

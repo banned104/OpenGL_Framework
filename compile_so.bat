@@ -99,18 +99,17 @@ REM ============================================
 REM 可选: 复制.so文件到Android项目
 REM ============================================
 REM 取消下面的注释以启用自动复制功能
-REM
-REM set TARGET_DIR=D:\AndroidCode\YourProject\app\src\main\jniLibs\arm64-v8a
-REM
-REM if not exist "%TARGET_DIR%" (
-REM     echo 目标目录不存在: %TARGET_DIR%
-REM     mkdir "%TARGET_DIR%"
-REM )
-REM
-REM echo 复制.so文件到 %TARGET_DIR%
-REM copy /Y "build_android\*.so" "%TARGET_DIR%"
-REM echo 复制完成!
 
-echo.
+set TARGET_DIR=example\android\app\src\main\jniLibs\arm64-v8a
+
+if not exist "%TARGET_DIR%" (
+    echo 目标目录不存在: %TARGET_DIR%
+    mkdir "%TARGET_DIR%"
+)
+
+echo 复制.so文件到 %TARGET_DIR%
+copy /Y "build_android\*.so" "%TARGET_DIR%"
+echo 复制完成!
+
 pause
 

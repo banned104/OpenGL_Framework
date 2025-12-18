@@ -202,7 +202,7 @@ extern "C" {
  * @return 是否成功
  */
 JNIEXPORT jboolean JNICALL
-Java_com_example_opengl_NativeRenderer_nativeInit(JNIEnv* env, jobject thiz, jobject surface) {
+Java_com_example_androidopengles_NativeRenderer_nativeInit(JNIEnv* env, jobject thiz, jobject surface) {
     LOGI("nativeInit called");
     
     if (g_initialized) {
@@ -252,7 +252,7 @@ Java_com_example_opengl_NativeRenderer_nativeInit(JNIEnv* env, jobject thiz, job
  * @param thiz Java对象
  */
 JNIEXPORT void JNICALL
-Java_com_example_opengl_NativeRenderer_nativeRender(JNIEnv* env, jobject thiz) {
+Java_com_example_androidopengles_NativeRenderer_nativeRender(JNIEnv* env, jobject thiz) {
     if (!g_initialized || !g_renderer) {
         return;
     }
@@ -277,7 +277,7 @@ Java_com_example_opengl_NativeRenderer_nativeRender(JNIEnv* env, jobject thiz) {
  * @param height 新高度
  */
 JNIEXPORT void JNICALL
-Java_com_example_opengl_NativeRenderer_nativeResize(JNIEnv* env, jobject thiz, jint width, jint height) {
+Java_com_example_androidopengles_NativeRenderer_nativeResize(JNIEnv* env, jobject thiz, jint width, jint height) {
     LOGI("nativeResize: %dx%d", width, height);
     
     g_width = width;
@@ -297,7 +297,7 @@ Java_com_example_opengl_NativeRenderer_nativeResize(JNIEnv* env, jobject thiz, j
  * @param thiz Java对象
  */
 JNIEXPORT void JNICALL
-Java_com_example_opengl_NativeRenderer_nativeCleanup(JNIEnv* env, jobject thiz) {
+Java_com_example_androidopengles_NativeRenderer_nativeCleanup(JNIEnv* env, jobject thiz) {
     LOGI("nativeCleanup called");
     
     cleanupRenderer();
@@ -319,7 +319,7 @@ Java_com_example_opengl_NativeRenderer_nativeCleanup(JNIEnv* env, jobject thiz) 
  * @return 渲染器名称
  */
 JNIEXPORT jstring JNICALL
-Java_com_example_opengl_NativeRenderer_nativeGetRendererName(JNIEnv* env, jobject thiz) {
+Java_com_example_androidopengles_NativeRenderer_nativeGetRendererName(JNIEnv* env, jobject thiz) {
     if (g_renderer) {
         return env->NewStringUTF(g_renderer->getName().c_str());
     }
