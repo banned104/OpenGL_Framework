@@ -301,11 +301,7 @@ private:
 // ============ 主函数 ============
 int main() {
     // ----- ThreadPool -----
-    // 线程创建启动
-    std::thread t1(ThreadTestClass::ThreadInstance1);
-    // 获取当前线程ID
-    std::cout << "Main thread id: " << std::this_thread::get_id() << std::endl;
-
+    auto threadTest = std::make_unique<ThreadTestClass>();
     {
         // 括号内创建线程 运行到外部之后 t2_InBrace 会被销毁(子线程对象销毁) 但是子线程还是在运行 此时报错
         // error: abort() has been called
@@ -317,6 +313,8 @@ int main() {
         // 坑: 主线程退出之后子线程不一定退出,继续运行, 主线程退出时内存空间被释放,子线程访问这些空间(静态对象全局变量等)会导致程序崩溃
         // 所以 detach的子线程不要访问任何外部变量. 而且一般不用detach.
     }
+
+
     // ----- ThreadPool -----
     
     Application app(800, 600, "OpenGL Triangle");
@@ -327,9 +325,5 @@ int main() {
     }
 
     app.run();
-
-    // ----- ThreadPool -----
-    t1.join();
-    // ----- ThreadPool -----
     return 0;
 }
