@@ -3,3 +3,4 @@ out
 build_android
 example/cpp
 *.so
+3rdparty/glfw
