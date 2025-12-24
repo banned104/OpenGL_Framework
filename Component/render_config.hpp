@@ -74,8 +74,8 @@ public:
         RenderConfig config;
 
         // 使用编译时嵌入的着色器源码（从.h头文件）
-        config.setVertexShaderSource(WIND_VERTEX_SHADER)
-              .setFragmentShaderSource(WIND_FRAGMENT_SHADER);
+        config.setVertexShaderSource(TRIANGLE_VERTEX_SHADER)
+              .setFragmentShaderSource(TRIANGLE_FRAGMENT_SHADER);
 
         std::vector<VertexData> vertices = {
             { glm::vec3(-0.5f, -0.5f, 0.0f), glm::vec3(1.0f, 0.0f, 0.0f) },
@@ -93,8 +93,8 @@ public:
     static RenderConfig createCubeConfig() {
         RenderConfig config;
 
-        config.setVertexShaderSource(WIND_VERTEX_SHADER)
-              .setFragmentShaderSource(WIND_FRAGMENT_SHADER);
+        config.setVertexShaderSource(TRIANGLE_VERTEX_SHADER)
+              .setFragmentShaderSource(TRIANGLE_FRAGMENT_SHADER);
 
         std::vector<VertexData2DPlane> vertices = {
             // 空间坐标vec3, 纹理坐标vec2
@@ -104,7 +104,7 @@ public:
             { glm::vec3( 1.0, -1.0, 0.0), glm::vec2(0.0, 1.0) }
         };
 
-        config.setVertexData(vertices);
+        //config.setVertexData(vertices);
 
         return config;
     }

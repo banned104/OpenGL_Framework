@@ -16,13 +16,6 @@ set(COMPONENT_SOURCES
     Component/camera/Camera.cpp
 )
 
-set(COMPONENT_HEADERS
-    Component/irenderer.hpp
-    Component/render_config.hpp
-    Component/render_context.hpp
-    Component/render_factory.hpp
-    Component/shader.hpp
-)
 
 # -------------------------------------------------------
 # Android编译配置 (编译为.so库) 
@@ -38,7 +31,6 @@ if(ANDROID OR BUILD_AS_SHARED)
     # 创建共享库
     add_library(${TARGET_NAME} SHARED
         ${COMPONENT_SOURCES}
-        ${COMPONENT_HEADERS}
         ${ANDROID_SOURCES}
     )
     
@@ -118,7 +110,6 @@ else()
     add_executable(${TARGET_NAME} 
         main.cpp
         ${COMPONENT_SOURCES}
-        ${COMPONENT_HEADERS}
     )
 
     # 查找OpenGL

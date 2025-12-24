@@ -81,14 +81,21 @@ def generate_variable_name(filename):
     base_name = os.path.basename(filename)
     file_name_without_ext = os.path.splitext(base_name)[0]
     
-    # 根据文件类型生成变量名
-    if "vert" in file_name_without_ext:
-        return "WIND_VERTEX_SHADER"
-    elif "frag" in file_name_without_ext:
-        return "WIND_FRAGMENT_SHADER"
+    # 提取主要文件名（去掉 .vert 或 .frag 后缀）
+    main_name = file_name_without_ext
+    if main_name.endswith('.vert'):
+        main_name = main_name[:-5]  # 去掉 .vert
+        suffix = "_VERTEX_SHADER"
+    elif main_name.endswith('.frag'):
+        main_name = main_name[:-5]  # 去掉 .frag
+        suffix = "_FRAGMENT_SHADER"
     else:
         # 通用命名规则
-        return file_name_without_ext.upper().replace('.', '_').replace('-', '_') + "_SHADER"
+        suffix = "_SHADER"
+    
+    # 将主要文件名转换为大写，并替换特殊字符
+    var_name = main_name.upper().replace('.', '_').replace('-', '_')
+    return var_name + suffix
 
 def convert_version_for_android(content):
     """将GLSL版本转换为Android兼容的版本"""

@@ -1,8 +1,9 @@
 #pragma once
 #include "../irenderer.hpp"
-#include "../render_config.hpp"
 #include "../render_context.hpp"
 #include "../shader.hpp"
+
+#include "../render_config.hpp"
 
 // 平台条件编译：OpenGL ES (Android) vs OpenGL Core (PC)
 #ifdef __ANDROID__
