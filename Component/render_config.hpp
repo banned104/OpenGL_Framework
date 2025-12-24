@@ -10,17 +10,65 @@
 #ifdef __ANDROID__
     #include <triangle/triangle.vert.es.h>
     #include <triangle/triangle.frag.es.h>
+
+    #include <cube/cube.vert.es.h>
+    #include <cube/cube.vert.es.h>
 #else
     #include <triangle/triangle.vert.core.h>
     #include <triangle/triangle.frag.core.h>
+
+    #include <cube/cube.vert.core.h>
+    #include <cube/cube.frag.core.h>
 #endif
 
+/*------------ 开闭原则 使用Traits范式优化代码 在编译期间选择Render进行渲染 ------------ */
+// 前向声明
+class TriangleRender;
+class CubeRender;
+/*------------- Traits -------------*/
 
-struct VertexData
+template<typename RenderType>
+struct RenderTraits;
+
+// 为每个渲染器特化
+template<>
+struct RenderTraits<TriangleRender>
 {
-    glm::vec3 position;
-    glm::vec3 color;
+    struct VertexData
+    {
+        glm::vec3 position;
+        glm::vec3 color;
+    };
+
+    static constexpr const char* vertexShaderSource = TRIANGLE_VERTEX_SHADER;
+    static constexpr const char* fragmentShaderSource = TRIANGLE_FRAGMENT_SHADER;
 };
+
+template<>
+struct RenderTraits<CubeRender> {
+    struct VertexData
+    {
+        glm::vec3 position;
+        glm::vec3 texcoord;
+    };
+
+    static constexpr const char* vertexShaderSource = CUBE_VERTEX_SHADER;
+    static constexpr const char* fragmentShaderSource = CUBE_FRAGMENT_SHADER;
+};
+
+#define USE_TRIANGLE_RENDER
+
+#ifdef USE_TRIANGLE_RENDER
+    using ActiveRenderer = TriangleRender;
+#elif USE_CUBE_RENDER
+    using ActiveRenderer = CubeRender;
+#endif
+
+using VertexData = RenderTraits<ActiveRenderer>::VertexData;
+
+/*------------- Traits -------------*/
+
+
 
 struct VertexData2DPlane {
     glm::vec3 position;
@@ -96,13 +144,13 @@ public:
         config.setVertexShaderSource(TRIANGLE_VERTEX_SHADER)
               .setFragmentShaderSource(TRIANGLE_FRAGMENT_SHADER);
 
-        std::vector<VertexData2DPlane> vertices = {
-            // 空间坐标vec3, 纹理坐标vec2
-            { glm::vec3(-1.0, -1.0, 0.0), glm::vec2(0.0, 0.0) },
-            { glm::vec3(-1.0,  1.0, 0.0), glm::vec2(1.0, 0.0) },
-            { glm::vec3( 1.0,  1.0, 0.0), glm::vec2(1.0, 1.0) },
-            { glm::vec3( 1.0, -1.0, 0.0), glm::vec2(0.0, 1.0) }
-        };
+        //std::vector<VertexData> vertices = {
+        //    // 空间坐标vec3, 纹理坐标vec2
+        //    { glm::vec3(-1.0, -1.0, 0.0), glm::vec2(0.0, 0.0) },
+        //    { glm::vec3(-1.0,  1.0, 0.0), glm::vec2(1.0, 0.0) },
+        //    { glm::vec3( 1.0,  1.0, 0.0), glm::vec2(1.0, 1.0) },
+        //    { glm::vec3( 1.0, -1.0, 0.0), glm::vec2(0.0, 1.0) }
+        //};
 
         //config.setVertexData(vertices);
 

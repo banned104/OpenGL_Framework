@@ -1,4 +1,4 @@
-#include "Camera.hpp"
+#include "camera.hpp"
 #include <algorithm> // for std::clamp
 
 // 辅助函数：线性插值

@@ -29,7 +29,7 @@ public:
     void setErrorCallback( ErrorCallback callback ) override;
 
 private:
-    bool initializeGeometry( const std::vector<VertexData2DPlane>& vertices );
+    bool initializeGeometry( const std::vector<VertexData>& vertices );
     void reportError( RenderError error, const std::string& message );
 
     Shader m_shader;

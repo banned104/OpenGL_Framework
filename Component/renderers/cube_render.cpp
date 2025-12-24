@@ -23,7 +23,7 @@ bool CubeRender::initialize(const RenderConfig& config) {
     }
 }
 
-bool CubeRender::initializeGeometry(const std::vector<VertexData2DPlane>& vertices) {
+bool CubeRender::initializeGeometry(const std::vector<VertexData>& vertices) {
     if (vertices.empty()) {
         return false;
     }
@@ -44,22 +44,22 @@ bool CubeRender::initializeGeometry(const std::vector<VertexData2DPlane>& vertic
     glGenBuffers(1, &this->m_vbo);
     // https://registry.khronos.org/OpenGL-Refpages/gl4/ -> glBindBuffer -> GL_ARRAY_BUFFER/GL_UNIFORM_BUFFER/GL_TEXTURE_BUFFER...
     glBindBuffer(GL_ARRAY_BUFFER, this->m_vbo);
-    // std::vector<VertexData2DPlane>::data 是一个常量成员函数, 返回指向向量中第一个元素的指针.  顶点属性数组;
-    glBufferData(GL_ARRAY_BUFFER, this->m_vertexCount * sizeof(VertexData2DPlane), vertices.data(), GL_STATIC_DRAW);
+    // std::vector<VertexData>::data 是一个常量成员函数, 返回指向向量中第一个元素的指针.  顶点属性数组;
+    glBufferData(GL_ARRAY_BUFFER, this->m_vertexCount * sizeof(VertexData), vertices.data(), GL_STATIC_DRAW);
 
     // Enable layout(Location=0); -> Vertex Attribute Array; 顶点属性数组, 顶点属性:顶点位置,颜色,纹理坐标,法向量; 所以顶点属性数组用于保存这些东西;
     // 状态机状态变化 当前处理Location=0 的数组
     // 0 -> 顶点坐标
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(/*index*/1,/*size*/3,/*Type*/GL_FLOAT,/*Normalized*/GL_FALSE, /*Stride*/sizeof(VertexData2DPlane), /*Pointer*/(void*)0);
+    glVertexAttribPointer(/*index*/1,/*size*/3,/*Type*/GL_FLOAT,/*Normalized*/GL_FALSE, /*Stride*/sizeof(VertexData), /*Pointer*/(void*)0);
     
 
     // 1 -> 顶点纹理坐标
     glEnableVertexAttribArray(1);
     // 这样写是错的; 因为 offsetof 定义是 #define offsetof(type, member)  ((size_t)&(((type*)0)->member))
-    // 会变成 ((size_t)&(((VertexData2DPlane*)0)->VertexData2DPlane::texcoord))
-    // glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, /*Stride*/sizeof(VertexData2DPlane), (void*)offsetof(VertexData2DPlane, VertexData2DPlane::texcoord));
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, /*Stride*/sizeof(VertexData2DPlane), (void*)offsetof(VertexData2DPlane, texcoord));
+    // 会变成 ((size_t)&(((VertexData*)0)->VertexData::texcoord))
+    // glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, /*Stride*/sizeof(VertexData), (void*)offsetof(VertexData, VertexData::texcoord));
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, /*Stride*/sizeof(VertexData), (void*)offsetof(VertexData, texcoord));
 
     // 状态机解绑
     glBindVertexArray(0);

@@ -13,7 +13,7 @@ option(BUILD_AS_SHARED "Build as shared library for Android" OFF)
 set(COMPONENT_SOURCES
     Component/renderers/triangle_render.cpp
     Component/shader.cpp
-    Component/camera/Camera.cpp
+    Component/camera/camera.cpp
 )
 
 
