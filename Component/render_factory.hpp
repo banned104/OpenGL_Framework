@@ -1,6 +1,6 @@
 #pragma once
 #include "irenderer.hpp"
-#include "triangle_render.hpp"
+#include <triangle_render.hpp>
 #include <memory>
 
 enum class RenderType {
@@ -16,6 +16,8 @@ public:
         switch (type) {
         case RenderType::Triangle:
             return std::make_unique<TriangleRender>();
+        // case RenderType::Cube:
+            // return std::make_unique<>;
             break;
         default:
             return nullptr;

@@ -11,8 +11,9 @@ option(BUILD_AS_SHARED "Build as shared library for Android" OFF)
 # -------------------------------------------------------
 # Component源文件
 set(COMPONENT_SOURCES
-    Component/triangle_render.cpp
+    Component/renderers/triangle_render.cpp
     Component/shader.cpp
+    Component/camera/Camera.cpp
 )
 
 set(COMPONENT_HEADERS
@@ -20,12 +21,11 @@ set(COMPONENT_HEADERS
     Component/render_config.hpp
     Component/render_context.hpp
     Component/render_factory.hpp
-    Component/triangle_render.hpp
     Component/shader.hpp
 )
 
 # -------------------------------------------------------
-# Android编译配置 (编译为.so库)
+# Android编译配置 (编译为.so库) 
 # -------------------------------------------------------
 if(ANDROID OR BUILD_AS_SHARED)
     message(STATUS "Building for Android as shared library")
@@ -56,6 +56,8 @@ if(ANDROID OR BUILD_AS_SHARED)
         PRIVATE
         ${CMAKE_SOURCE_DIR}/3rdparty
         ${CMAKE_SOURCE_DIR}/Component
+        ${CMAKE_SOURCE_DIR}/Component/renderers
+        ${CMAKE_SOURCE_DIR}/Component/camera
         ${CMAKE_SOURCE_DIR}/shaders
     )
 
@@ -74,8 +76,10 @@ else()
 
     # Define shader files to convert
     set(SHADER_FILES
-        "${SHADER_DIR}/triangle.vert.glsl"
-        "${SHADER_DIR}/triangle.frag.glsl"
+        "${SHADER_DIR}/triangle/triangle.vert.glsl"
+        "${SHADER_DIR}/triangle/triangle.frag.glsl"
+        "${SHADER_DIR}/cube/cube.vert.glsl"
+        "${SHADER_DIR}/cube/cube.frag.glsl"
     )
     set(PYTHON_ARGS "--pc")
 
@@ -84,8 +88,11 @@ else()
 
     foreach(SHADER_FILE ${SHADER_FILES})
         get_filename_component(SHADER_BASENAME ${SHADER_FILE} NAME)
+        # 获取Shader所在的文件目录
+        get_filename_component(SHADER_DIR_PATH ${SHADER_FILE} DIRECTORY)
         string(REGEX REPLACE "\\.glsl$" "" SHADER_NAME "${SHADER_BASENAME}")
-        set(HEADER_FILE "${SHADER_DIR}/${SHADER_NAME}.core.h")
+        # 将生成文件放在Shader所在的目录下
+        set(HEADER_FILE "${SHADER_DIR_PATH}/${SHADER_NAME}.core.h")
         
         list(APPEND GENERATED_HEADERS ${HEADER_FILE})
         
@@ -132,6 +139,8 @@ else()
         ${CMAKE_SOURCE_DIR}/3rdparty/glfw/include
         ${CMAKE_SOURCE_DIR}/3rdparty
         ${CMAKE_SOURCE_DIR}/Component
+        ${CMAKE_SOURCE_DIR}/Component/renderers
+        ${CMAKE_SOURCE_DIR}/Component/camera
         ${CMAKE_SOURCE_DIR}/shaders
     )
 

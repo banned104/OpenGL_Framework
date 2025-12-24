@@ -8,11 +8,11 @@
 // 根据平台选择不同的着色器版本
 // 注意：CMakeLists.txt中已将shaders目录添加到include路径
 #ifdef __ANDROID__
-    #include <triangle.vert.es.h>
-    #include <triangle.frag.es.h>
+    #include <triangle/triangle.vert.es.h>
+    #include <triangle/triangle.frag.es.h>
 #else
-    #include <triangle.vert.core.h>
-    #include <triangle.frag.core.h>
+    #include <triangle/triangle.vert.core.h>
+    #include <triangle/triangle.frag.core.h>
 #endif
 
 
@@ -20,6 +20,11 @@ struct VertexData
 {
     glm::vec3 position;
     glm::vec3 color;
+};
+
+struct VertexData2DPlane {
+    glm::vec3 position;
+    glm::vec2 texcoord;
 };
 
 class RenderConfig {
@@ -81,6 +86,25 @@ public:
         config.setVertexData(vertices)
             .setClearColor(0.0f, 0.0f, 0.5f, 1.0f)
             .setRotationSpeeed(1.0f);
+
+        return config;
+    }
+
+    static RenderConfig createCubeConfig() {
+        RenderConfig config;
+
+        config.setVertexShaderSource(WIND_VERTEX_SHADER)
+              .setFragmentShaderSource(WIND_FRAGMENT_SHADER);
+
+        std::vector<VertexData2DPlane> vertices = {
+            // 空间坐标vec3, 纹理坐标vec2
+            { glm::vec3(-1.0, -1.0, 0.0), glm::vec2(0.0, 0.0) },
+            { glm::vec3(-1.0,  1.0, 0.0), glm::vec2(1.0, 0.0) },
+            { glm::vec3( 1.0,  1.0, 0.0), glm::vec2(1.0, 1.0) },
+            { glm::vec3( 1.0, -1.0, 0.0), glm::vec2(0.0, 1.0) }
+        };
+
+        config.setVertexData(vertices);
 
         return config;
     }
