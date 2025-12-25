@@ -109,8 +109,26 @@ bool CubeRender::render(const RenderContext& context) {
     glClearColor(this->m_clearColor.x, this->m_clearColor.y, this->m_clearColor.z, this->m_clearColor.w);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    // 构建模型矩阵
+    // 构建模型矩阵 model 
     glm::mat4 modelMatrix = glm::mat4(1.0);
+    modelMatrix = glm::rotate(modelMatrix, glm::radians(30), glm::vec3(1,1,1));
+
+    // 观察矩阵 view
+    glm::vec4 viewMatrix = m_camera.getViewMatrix();
+
+    // 投影矩阵 projection
+    glm::vec4 projectionMatrix = m_camera.getProjectionMatrix();
+
+    glm::vec4 mvp = projectionMatrix * viewMatrix * modelMatrix;
+
+    m_shader.use();
+    m_shader.setMat4("mvp", mvp);
+
+    glBindVertexArray(m_vao);
+    glDrawArrays(GL_TRIANGLES, 0, m_vertexCount);
+    glBindVertexArray(0);
+
+    m_shader.unuse();
 }
 
 

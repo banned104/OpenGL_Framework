@@ -5,6 +5,8 @@
 #include "../render_context.hpp"
 #include "../render_factory.hpp"
 
+#include "camera.hpp"
+
 #ifdef __ANDROID__
     #include <GLES3/gl3.h>
     #include <GLES3/gl3ext.h>
@@ -44,4 +46,6 @@ private:
 
     ErrorCallback m_errorCallback;
     bool m_initialized;
+
+    Camera m_camera;
 };

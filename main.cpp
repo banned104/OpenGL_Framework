@@ -189,7 +189,7 @@ private:
         });
 
         // 创建配置并初始化
-        m_config = RenderConfig::createTriangleConfig();
+        m_config = RenderConfig::createActiveConfig();
         if (!m_renderer->initialize(m_config)) {
             std::cerr << "Failed to initialize renderer" << std::endl;
             return false;

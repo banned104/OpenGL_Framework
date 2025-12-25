@@ -17,6 +17,7 @@ set(COMPONENT_SOURCES
 )
 
 
+
 # -------------------------------------------------------
 # Android编译配置 (编译为.so库) 
 # -------------------------------------------------------
@@ -138,3 +139,17 @@ else()
     # 确保shader头文件在编译前生成
     add_dependencies(${TARGET_NAME} generate_shaders)
 endif()
+
+# 编译选项: 选择不同渲染器
+set(USE_RENDERER "triangle")
+set_property(CACHE USE_RENDERER PROPERTY STRINGS triangle cube)
+if( USE_RENDERER STREQUAL "triangle" )
+    target_compile_definitions(${TARGET_NAME} PRIVATE USE_TRIANGLE_RENDER)
+    message(STATUS "Building with Triangle Renderer")
+elseif(USE_RENDERER STREQUAL "cube" )
+    target_compile_definitions(${TARGET_NAME} PRIVATE USE_CUBE_RENDER)
+    message(STATUS "Building with Cube Renderer")
+else()
+    message(FATAL_ERROR "Unknown renderer selected: ${USE_RENDERER}")
+endif()
+

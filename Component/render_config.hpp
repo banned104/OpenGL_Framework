@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <glm/glm.hpp>
+#include <type_traits>
 
 // 包含生成的着色器头文件（编译时嵌入）
 // 根据平台选择不同的着色器版本
@@ -22,9 +23,9 @@
 #endif
 
 /*------------ 开闭原则 使用Traits范式优化代码 在编译期间选择Render进行渲染 ------------ */
-// 前向声明
-class TriangleRender;
-class CubeRender;
+// 定义标签类型（不需要完整定义）
+struct TriangleRendererTag {};
+struct CubeRendererTag {};
 /*------------- Traits -------------*/
 
 template<typename RenderType>
@@ -32,7 +33,7 @@ struct RenderTraits;
 
 // 为每个渲染器特化
 template<>
-struct RenderTraits<TriangleRender>
+struct RenderTraits<TriangleRendererTag>
 {
     struct VertexData
     {
@@ -45,23 +46,22 @@ struct RenderTraits<TriangleRender>
 };
 
 template<>
-struct RenderTraits<CubeRender> {
+struct RenderTraits<CubeRendererTag> {
     struct VertexData
     {
         glm::vec3 position;
-        glm::vec3 texcoord;
+        glm::vec2 textureCoord;
     };
 
     static constexpr const char* vertexShaderSource = CUBE_VERTEX_SHADER;
     static constexpr const char* fragmentShaderSource = CUBE_FRAGMENT_SHADER;
 };
 
-#define USE_TRIANGLE_RENDER
 
 #ifdef USE_TRIANGLE_RENDER
-    using ActiveRenderer = TriangleRender;
+    using ActiveRenderer = TriangleRendererTag;
 #elif USE_CUBE_RENDER
-    using ActiveRenderer = CubeRender;
+    using ActiveRenderer = CubeRendererTag;
 #endif
 
 using VertexData = RenderTraits<ActiveRenderer>::VertexData;
@@ -69,11 +69,6 @@ using VertexData = RenderTraits<ActiveRenderer>::VertexData;
 /*------------- Traits -------------*/
 
 
-
-struct VertexData2DPlane {
-    glm::vec3 position;
-    glm::vec2 texcoord;
-};
 
 class RenderConfig {
 public:
@@ -113,17 +108,30 @@ public:
     float rotationSpeed() const { return m_rotationSpeed; }
 
 
-    /* ------------------------------------------------
-     * 生成三角形渲染的config
-     * 使用Builder模式, 链式调用,易于构建复杂配置
-     * 配置和实现分离 易于修改和测试
-    * ------------------------------------------------ */
-    static RenderConfig createTriangleConfig() {
+static RenderConfig createActiveConfig() {
+    return createActiveConfigImpl<ActiveRenderer>();
+}
+
+
+private:
+    std::string m_vertexShaderSource;
+    std::string m_fragmentShaderSource;
+    std::vector<VertexData> m_vertexData;
+    glm::vec4 m_clearColor{ 0.0f, 0.0f, 0.0f, 1.0f };
+    float m_rotationSpeed{1.0f};
+
+    /*---------------- 模板特化 + SFINAE ----------------*/
+    template<typename RenderTag>
+    static RenderConfig createActiveConfigImpl();
+
+    // 特化实现
+    template<>
+    static RenderConfig createActiveConfigImpl<TriangleRendererTag>() {
         RenderConfig config;
 
         // 使用编译时嵌入的着色器源码（从.h头文件）
         config.setVertexShaderSource(TRIANGLE_VERTEX_SHADER)
-              .setFragmentShaderSource(TRIANGLE_FRAGMENT_SHADER);
+            .setFragmentShaderSource(TRIANGLE_FRAGMENT_SHADER);
 
         std::vector<VertexData> vertices = {
             { glm::vec3(-0.5f, -0.5f, 0.0f), glm::vec3(1.0f, 0.0f, 0.0f) },
@@ -138,30 +146,28 @@ public:
         return config;
     }
 
-    static RenderConfig createCubeConfig() {
+    // 特化实现
+    template<>
+    static RenderConfig createActiveConfigImpl<CubeRendererTag>() {
         RenderConfig config;
+        config.setVertexShaderSource(CUBE_VERTEX_SHADER)
+            .setFragmentShaderSource(CUBE_FRAGMENT_SHADER);
 
-        config.setVertexShaderSource(TRIANGLE_VERTEX_SHADER)
-              .setFragmentShaderSource(TRIANGLE_FRAGMENT_SHADER);
+        std::vector<VertexData> vertices = {
+            // 空间坐标vec3, 纹理坐标vec2
+            { glm::vec3(-1.0, -1.0, 0.0), glm::vec2(0.0, 0.0) },
+            { glm::vec3(-1.0,  1.0, 0.0), glm::vec2(1.0, 0.0) },
+            { glm::vec3(1.0,  1.0, 0.0), glm::vec2(1.0, 1.0) },
+            { glm::vec3(1.0, -1.0, 0.0), glm::vec2(0.0, 1.0) }
+        };
 
-        //std::vector<VertexData> vertices = {
-        //    // 空间坐标vec3, 纹理坐标vec2
-        //    { glm::vec3(-1.0, -1.0, 0.0), glm::vec2(0.0, 0.0) },
-        //    { glm::vec3(-1.0,  1.0, 0.0), glm::vec2(1.0, 0.0) },
-        //    { glm::vec3( 1.0,  1.0, 0.0), glm::vec2(1.0, 1.0) },
-        //    { glm::vec3( 1.0, -1.0, 0.0), glm::vec2(0.0, 1.0) }
-        //};
-
-        //config.setVertexData(vertices);
+        config.setVertexData(vertices);
 
         return config;
     }
 
 
-private:
-    std::string m_vertexShaderSource;
-    std::string m_fragmentShaderSource;
-    std::vector<VertexData> m_vertexData;
-    glm::vec4 m_clearColor{ 0.0f, 0.0f, 0.0f, 1.0f };
-    float m_rotationSpeed{1.0f};
+
 };
+
+
