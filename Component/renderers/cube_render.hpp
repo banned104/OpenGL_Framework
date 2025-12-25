@@ -1,10 +1,9 @@
 #pragma once
 
 #include "../irenderer.hpp"
-#include "../render_config.hpp"
 #include "../render_context.hpp"
-#include "../render_factory.hpp"
-
+#include "../shader.hpp"
+#include "cube_config.hpp"
 #include "camera.hpp"
 
 #ifdef __ANDROID__
@@ -24,14 +23,15 @@ public:
     CubeRender();
     ~CubeRender() override;
 
-    bool initialize( const RenderConfig& config ) override;
+    bool initialize( const IRenderConfig& config ) override;
     bool render( const RenderContext& context ) override;
     bool resize( int width, int height ) override;
     void cleanup() override;
     void setErrorCallback( ErrorCallback callback ) override;
+    std::string getName() const override;
 
 private:
-    bool initializeGeometry( const std::vector<VertexData>& vertices );
+    bool initializeGeometry( const std::vector<CubeVertex>& vertices );
     void reportError( RenderError error, const std::string& message );
 
     Shader m_shader;

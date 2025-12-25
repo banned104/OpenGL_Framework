@@ -7,7 +7,7 @@
 
 // 前向声明
 class RenderContext;
-class RenderConfig;
+class IRenderConfig;
 
 enum class RenderError {
     None = 0,
@@ -26,7 +26,7 @@ public:
     virtual ~IRenderer() = default;
     
     // 初始化渲染器
-    virtual bool initialize(const RenderConfig& config) = 0;
+    virtual bool initialize(const IRenderConfig& config) = 0;
     
     // 执行渲染
     virtual bool render(const RenderContext& context) = 0;

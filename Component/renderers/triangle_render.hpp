@@ -2,8 +2,7 @@
 #include "../irenderer.hpp"
 #include "../render_context.hpp"
 #include "../shader.hpp"
-
-#include "../render_config.hpp"
+#include "triangle_config.hpp"
 
 // 平台条件编译：OpenGL ES (Android) vs OpenGL Core (PC)
 #ifdef __ANDROID__
@@ -23,7 +22,7 @@ public:
     TriangleRender();
     ~TriangleRender() override;
 
-    bool initialize(const RenderConfig& config) override;
+    bool initialize(const IRenderConfig& config) override;
     bool render( const RenderContext& context ) override;
     bool resize( int width, int height ) override;
     void cleanup() override;
@@ -31,7 +30,7 @@ public:
     std::string getName() const override { return "TriangleRender"; };
 
 private:
-    bool initializeGeometry( const std::vector<VertexData>& vertices );
+    bool initializeGeometry( const std::vector<TriangleVertex>& vertices );
     void reportError( RenderError error, const std::string& message );
 
     Shader m_shader;

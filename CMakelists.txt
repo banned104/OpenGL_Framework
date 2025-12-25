@@ -12,6 +12,7 @@ option(BUILD_AS_SHARED "Build as shared library for Android" OFF)
 # Component源文件
 set(COMPONENT_SOURCES
     Component/renderers/triangle_render.cpp
+    Component/renderers/cube_render.cpp
     Component/shader.cpp
     Component/camera/camera.cpp
 )
@@ -141,7 +142,7 @@ else()
 endif()
 
 # 编译选项: 选择不同渲染器
-set(USE_RENDERER "triangle")
+set(USE_RENDERER "cube" CACHE STRING "Select renderer type")
 set_property(CACHE USE_RENDERER PROPERTY STRINGS triangle cube)
 if( USE_RENDERER STREQUAL "triangle" )
     target_compile_definitions(${TARGET_NAME} PRIVATE USE_TRIANGLE_RENDER)

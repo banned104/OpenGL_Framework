@@ -8,8 +8,16 @@
 #include <string>
 
 #include "render_factory.hpp"
-#include "render_config.hpp"
 #include "render_context.hpp"
+
+// 根据编译宏选择配置类
+#ifdef USE_TRIANGLE_RENDER
+    #include "triangle_config.hpp"
+    using ActiveConfig = TriangleConfig;
+#elif USE_CUBE_RENDER
+    #include "cube_config.hpp"
+    using ActiveConfig = CubeConfig;
+#endif
 
 /**
  * @brief Application类 - 封装整个OpenGL应用程序的生命周期
@@ -176,8 +184,13 @@ private:
 
     // 对 m_renderer 进行创建和配置
     bool initializeRenderer() {
-        // 使用工厂创建渲染器
-        m_renderer = RenderFactory::create("triangle");
+        // 根据编译宏选择渲染器
+        #ifdef USE_TRIANGLE_RENDER
+            m_renderer = RenderFactory::create("triangle");
+        #elif USE_CUBE_RENDER
+            m_renderer = RenderFactory::create("cube");
+        #endif
+
         if (!m_renderer) {
             std::cerr << "Failed to create renderer" << std::endl;
             return false;
@@ -188,9 +201,9 @@ private:
             std::cerr << "Render Error [" << static_cast<int>(error) << "]: " << msg << std::endl;
         });
 
-        // 创建配置并初始化
-        m_config = RenderConfig::createDefaultConfig();
-        if (!m_renderer->initialize(m_config)) {
+        // 创建配置并初始化 (使用编译期选择的配置类)
+        ActiveConfig config;
+        if (!m_renderer->initialize(config)) {
             std::cerr << "Failed to initialize renderer" << std::endl;
             return false;
         }
@@ -286,7 +299,6 @@ private:
 
     // 渲染相关
     std::unique_ptr<IRenderer> m_renderer;
-    RenderConfig m_config;
     glm::mat4 m_projectionMatrix;
 
     // 帧计数

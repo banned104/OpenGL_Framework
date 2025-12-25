@@ -1,13 +1,15 @@
+#ifdef USE_CUBE_RENDER
+
 #include "cube_render.hpp"
 #include <iostream>
 
 CubeRender::CubeRender()
     : m_vao(0)
     , m_vbo(0)
-    , m_projection(0)
-    , m_clearColor(1.0f, 1.0f, 1.0f, 1.0f)
-    , m_rotationSpeed(0)
-    , m_currentAngle(0)
+    , m_projection(1.0f)
+    , m_clearColor(0.1f, 0.1f, 0.1f, 1.0f)
+    , m_rotationSpeed(1.0f)
+    , m_currentAngle(0.0f)
     , m_vertexCount(0)
     , m_initialized(false)
 { }
@@ -16,14 +18,34 @@ CubeRender::~CubeRender() {
     this->cleanup();
 }
 
-bool CubeRender::initialize(const RenderConfig& config) {
+bool CubeRender::initialize(const IRenderConfig& config) {
+    // 向下转型获取具体配置
+    const auto* cubeConfig = dynamic_cast<const CubeConfig*>(&config);
+    if (!cubeConfig) {
+        reportError(RenderError::InitializationFailed, "Invalid config type for CubeRender");
+        return false;
+    }
+
     if (!m_shader.loadFromSource(config.vertexShaderSource(), config.fragmentShaderSource())) {
         this->reportError(RenderError::ShaderCompilationFailed, "Failed to compile shader:" + m_shader.lastError());
         return false;
     }
+
+    // 初始化几何体
+    if (!initializeGeometry(cubeConfig->vertices())) {
+        reportError(RenderError::BufferCreationFailed, "Failed to create vertex buffer");
+        return false;
+    }
+
+    // 保存配置
+    m_clearColor = config.clearColor();
+    m_rotationSpeed = config.rotationSpeed();
+    m_initialized = true;
+
+    return true;
 }
 
-bool CubeRender::initializeGeometry(const std::vector<VertexData>& vertices) {
+bool CubeRender::initializeGeometry(const std::vector<CubeVertex>& vertices) {
     if (vertices.empty()) {
         return false;
     }
@@ -31,37 +53,22 @@ bool CubeRender::initializeGeometry(const std::vector<VertexData>& vertices) {
     this->m_vertexCount = static_cast<int>(vertices.size());
 
     // VAO 
-    // void glGenVertexArrays(GLsizei n, GLuint *arrays); n是需要生成多少个VAO身份证号, array 用于保存多个身份证号.
     glGenVertexArrays(1, &this->m_vao);
-    std::cout << "VAO Number:" << this->m_vao << std::endl;
-    // 状态机变化: 激活VAO, 第一次绑定ID, 当前处理的就是这个VAO
-    // glBindVertexArray binds the vertex array object with name array. 
-    // array is the name of a vertex array object previously returned from a call to glGenVertexArrays, 
-    // --> or zero to break the existing vertex array object binding.  <--
     glBindVertexArray(this->m_vao);
 
     // VBO
     glGenBuffers(1, &this->m_vbo);
-    // https://registry.khronos.org/OpenGL-Refpages/gl4/ -> glBindBuffer -> GL_ARRAY_BUFFER/GL_UNIFORM_BUFFER/GL_TEXTURE_BUFFER...
     glBindBuffer(GL_ARRAY_BUFFER, this->m_vbo);
-    // std::vector<VertexData>::data 是一个常量成员函数, 返回指向向量中第一个元素的指针.  顶点属性数组;
-    glBufferData(GL_ARRAY_BUFFER, this->m_vertexCount * sizeof(VertexData), vertices.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, this->m_vertexCount * sizeof(CubeVertex), vertices.data(), GL_STATIC_DRAW);
 
-    // Enable layout(Location=0); -> Vertex Attribute Array; 顶点属性数组, 顶点属性:顶点位置,颜色,纹理坐标,法向量; 所以顶点属性数组用于保存这些东西;
-    // 状态机状态变化 当前处理Location=0 的数组
-    // 0 -> 顶点坐标
+    // 位置属性 (location = 0)
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(/*index*/1,/*size*/3,/*Type*/GL_FLOAT,/*Normalized*/GL_FALSE, /*Stride*/sizeof(VertexData), /*Pointer*/(void*)0);
-    
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(CubeVertex), (void*)0);
 
-    // 1 -> 顶点纹理坐标
+    // 纹理坐标属性 (location = 1)
     glEnableVertexAttribArray(1);
-    // 这样写是错的; 因为 offsetof 定义是 #define offsetof(type, member)  ((size_t)&(((type*)0)->member))
-    // 会变成 ((size_t)&(((VertexData*)0)->VertexData::texcoord))
-    // glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, /*Stride*/sizeof(VertexData), (void*)offsetof(VertexData, VertexData::texcoord));
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, /*Stride*/sizeof(VertexData), (void*)offsetof(VertexData, texcoord));
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(CubeVertex), (void*)offsetof(CubeVertex, texCoord));
 
-    // 状态机解绑
     glBindVertexArray(0);
     return true;
 }
@@ -101,25 +108,34 @@ void CubeRender::reportError(RenderError error, const std::string& msg) {
     }
 }
 
+std::string CubeRender::getName() const {
+    return "cube";
+}
+
+
+
 bool CubeRender::render(const RenderContext& context) {
-    if ( !this->m_initialized ) {
-        this->reportError(RenderError::InitializationFailed, "CubeRender Initialization failed");
+    if (!m_initialized) {
+        reportError(RenderError::InitializationFailed, "CubeRender not initialized");
+        return false;
     }
 
-    glClearColor(this->m_clearColor.x, this->m_clearColor.y, this->m_clearColor.z, this->m_clearColor.w);
+    glClearColor(m_clearColor.x, m_clearColor.y, m_clearColor.z, m_clearColor.w);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    // 构建模型矩阵 model 
-    glm::mat4 modelMatrix = glm::mat4(1.0);
-    modelMatrix = glm::rotate(modelMatrix, glm::radians(30), glm::vec3(1,1,1));
+    // 更新旋转角度
+    m_currentAngle += m_rotationSpeed;
+    if (m_currentAngle > 360.0f) {
+        m_currentAngle -= 360.0f;
+    }
 
-    // 观察矩阵 view
-    glm::vec4 viewMatrix = m_camera.getViewMatrix();
+    // 构建模型矩阵
+    glm::mat4 modelMatrix = glm::mat4(1.0f);
+    modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, 0.0f, -5.0f));
+    modelMatrix = glm::rotate(modelMatrix, glm::radians(m_currentAngle), glm::vec3(0.0f, 0.0f, 1.0f));
 
-    // 投影矩阵 projection
-    glm::vec4 projectionMatrix = m_camera.getProjectionMatrix();
-
-    glm::vec4 mvp = projectionMatrix * viewMatrix * modelMatrix;
+    // MVP矩阵
+    glm::mat4 mvp = context.projectionMatrix() * modelMatrix;
 
     m_shader.use();
     m_shader.setMat4("mvp", mvp);
@@ -129,6 +145,9 @@ bool CubeRender::render(const RenderContext& context) {
     glBindVertexArray(0);
 
     m_shader.unuse();
+
+    return true;
 }
 
 
+#endif

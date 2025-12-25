@@ -1,3 +1,5 @@
+#ifdef USE_TRIANGLE_RENDER
+
 #include "triangle_render.hpp"
 #include <iostream>
 
@@ -17,15 +19,22 @@ TriangleRender::~TriangleRender() {
     cleanup();
 }
 
-bool TriangleRender::initialize(const RenderConfig& config) {
-    // 使用Shader类从源码加载着色器（编译时嵌入）
+bool TriangleRender::initialize(const IRenderConfig& config) {
+    // 向下转型获取具体配置
+    const auto* triangleConfig = dynamic_cast<const TriangleConfig*>(&config);
+    if (!triangleConfig) {
+        reportError(RenderError::InitializationFailed, "Invalid config type for TriangleRender");
+        return false;
+    }
+
+    // 使用Shader类从源码加载着色器
     if (!m_shader.loadFromSource(config.vertexShaderSource(), config.fragmentShaderSource())) {
         reportError(RenderError::ShaderCompilationFailed,  "Failed to compile shader: " + m_shader.lastError());
         return false;
     }
 
     // 初始化几何体
-    if (!initializeGeometry(config.vertexData())) {
+    if (!initializeGeometry(triangleConfig->vertices())) {
         reportError(RenderError::BufferCreationFailed, "Failed to create vertex buffer");
         return false;
     }
@@ -100,7 +109,7 @@ void TriangleRender::setErrorCallback(ErrorCallback callback) {
     m_errorCallback = callback;
 }
 
-bool TriangleRender::initializeGeometry(const std::vector<VertexData>& vertices) {
+bool TriangleRender::initializeGeometry(const std::vector<TriangleVertex>& vertices) {
     if (vertices.empty()) {
         return false;
     }
@@ -114,16 +123,16 @@ bool TriangleRender::initializeGeometry(const std::vector<VertexData>& vertices)
     // 创建VBO
     glGenBuffers(1, &m_vbo);
     glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
-    glBufferData(GL_ARRAY_BUFFER, m_vertexCount * sizeof(VertexData), vertices.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, m_vertexCount * sizeof(TriangleVertex), vertices.data(), GL_STATIC_DRAW);
 
     // 设置顶点属性指针
     // 位置属性 (location = 0)
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(VertexData), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(TriangleVertex), (void*)0);
 
     // 颜色属性 (location = 1)
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(VertexData), (void*)offsetof(VertexData, color));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(TriangleVertex), (void*)offsetof(TriangleVertex, color));
 
     glBindVertexArray(0);
 
@@ -138,3 +147,4 @@ void TriangleRender::reportError(RenderError error, const std::string& message) 
 }
 
 
+#endif
